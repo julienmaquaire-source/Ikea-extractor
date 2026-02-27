@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IKEA — Extracteur Sales Orders</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ikea-yellow: #FFDA1A;
+      --ikea-blue: #003087;
+      --ikea-blue-light: #0058A3;
+      --bg: #F5F5F0;
+      --card: #ffffff;
+      --text: #111;
+      --muted: #666;
+      --border: #e0e0e0;
+      --success: #1a7a3c;
+      --error: #c0392b;
+    }
+
+    body {
+      font-family: 'Noto Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--ikea-blue);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      height: 64px;
+    }
+
+    .logo {
+      background: var(--ikea-yellow);
+      color: var(--ikea-blue);
+      font-weight: 700;
+      font-size: 1.4rem;
+      padding: 4px 12px;
+      border-radius: 3px;
+      letter-spacing: 1px;
+    }
+
+    header h1 {
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    main {
+      flex: 1;
+      max-width: 680px;
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 2.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--ikea-blue);
+      margin-bottom: 0.4rem;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #b0bec5;
+      border-radius: 8px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fafafa;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--ikea-blue-light);
+      background: #e8f0fb;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .drop-zone strong {
+      display: block;
+      color: var(--ikea-blue);
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .drop-zone span {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    /* File list */
+    #file-list {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #f0f4ff;
+      border-radius: 5px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      color: var(--ikea-blue);
+    }
+
+    .file-item .file-icon { font-size: 1rem; }
+
+    /* LSC selector */
+    .lsc-row {
+      margin-top: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .lsc-row label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .lsc-row select {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* Button */
+    button[type="submit"] {
+      margin-top: 1.75rem;
+      width: 100%;
+      background: var(--ikea-blue);
+      color: white;
+      border: none;
+      border-radius: 40px;
+      padding: 0.85rem 2rem;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button[type="submit"]:hover { background: var(--ikea-blue-light); }
+    button[type="submit"]:active { transform: scale(0.98); }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Status */
+    #status {
+      margin-top: 1.5rem;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    #status.success {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      color: var(--success);
+      display: block;
+    }
+
+    #status.error {
+      background: #fdecea;
+      border: 1px solid #f5c6c6;
+      color: var(--error);
+      display: block;
+    }
+
+    #status.loading {
+      background: #e3f2fd;
+      border: 1px solid #90caf9;
+      color: var(--ikea-blue);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 3px solid #90caf9;
+      border-top-color: var(--ikea-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+      font-size: 0.85rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">IKEA</div>
+  <h1>Extracteur de Sales Orders — LSC</h1>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Déposer vos PDFs In-Delivery</h2>
+    <p>Glissez-déposez un ou plusieurs fichiers PDF reçus d'IKEA. L'outil filtre automatiquement selon le numéro LSC et génère un fichier Excel avec les Sales Orders.</p>
+
+    <form id="upload-form" enctype="multipart/form-data">
+
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" name="pdfs" id="file-input" multiple accept=".pdf" />
+        <div class="drop-icon">📂</div>
+        <strong>Cliquer ou glisser les PDFs ici</strong>
+        <span>Formats acceptés : .pdf — plusieurs fichiers possibles</span>
+      </div>
+
+      <div id="file-list"></div>
+
+      <div class="lsc-row">
+        <label for="lsc-select">Filtrer le LSC :</label>
+        <select name="lsc" id="lsc-select">
+          <option value="1670">LSC 1670</option>
+          <option value="3450">LSC 3450</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submit-btn" disabled>
+        ⬇️ Générer le fichier Excel
+      </button>
+    </form>
+
+    <div id="status"></div>
+  </div>
+</main>
+
+<footer>Outil interne — Traitement local des fichiers</footer>
+
+<script>
+  const fileInput = document.getElementById('file-input');
+  const fileList = document.getElementById('file-list');
+  const submitBtn = document.getElementById('submit-btn');
+  const dropZone = document.getElementById('drop-zone');
+  const status = document.getElementById('status');
+  let selectedFiles = [];
+
+  function updateFileList() {
+    fileList.innerHTML = '';
+    selectedFiles.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.innerHTML = `<span class="file-icon">📄</span> ${f.name}`;
+      fileList.appendChild(div);
+    });
+    submitBtn.disabled = selectedFiles.length === 0;
+  }
+
+  fileInput.addEventListener('change', () => {
+    selectedFiles = Array.from(fileInput.files);
+    updateFileList();
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    selectedFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf'));
+    updateFileList();
+  });
+
+  document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedFiles.length) return;
+
+    status.className = 'loading';
+    status.innerHTML = '<div class="spinner"></div> Traitement en cours…';
+    submitBtn.disabled = true;
+
+    const formData = new FormData();
+    selectedFiles.forEach(f => formData.append('pdfs', f));
+    formData.append('lsc', document.getElementById('lsc-select').value);
+
+    try {
+      const res = await fetch('/process', { method: 'POST', body: formData });
+
+      if (res.ok && res.headers.get('content-type').includes('spreadsheet')) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.headers.get('content-disposition')?.match(/filename="(.+)"/)?.[1] || 'sales_orders.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+        status.className = 'success';
+        status.innerHTML = '✅ Fichier Excel généré et téléchargé avec succès !';
+      } else {
+        const data = await res.json();
+        status.className = 'error';
+        let html = `⚠️ ${data.error || 'Erreur inconnue'}`;
+        if (data.results) {
+          html += '<br><br>';
+          data.results.forEach(r => {
+            html += `<div class="result-row">${r.skipped ? '↩️' : '✅'} <b>${r.file}</b> — ${r.skipped ? `LSC ${r.lsc} ignoré` : `${r.count} commande(s) extraite(s)`}</div>`;
+          });
+        }
+        status.innerHTML = html;
+      }
+    } catch (err) {
+      status.className = 'error';
+      status.innerHTML = '❌ Erreur de connexion au serveur.';
+    }
+
+    submitBtn.disabled = false;
+  });
+</script>
+
+</body>
+</html>
